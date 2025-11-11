@@ -56,5 +56,26 @@ print(freq_table)
 barplot(freq_table, main="Biểu đồ cột Volume Category", col="skyblue",
         ylab="Số lượng", xlab="Nhóm Volume")
 
-par(mfrow=c(2,3))  # Vẽ nhiều biểu đồ cùng lúc
+par(mfrow=c(2,3)) 
 for(col in numeric_cols){
+hist(child_coca_cola[[col]], main=paste("Histogram của", col), xlab=col, col="lightgreen", breaks=20)
+  qqnorm(child_coca_cola[[col]], main=paste("Q-Q plot của", col))
+  qqline(child_coca_cola[[col]], col="red")
+}
+par(mfrow=c(1,1))  
+
+cor_matrix <- cor(child_coca_cola[numeric_cols])
+print(cor_matrix)
+
+image(1:length(numeric_cols), 1:length(numeric_cols), t(cor_matrix[nrow(cor_matrix):1,]), 
+      axes=FALSE, xlab="", ylab="", col=heat.colors(20))
+axis(1, at=1:length(numeric_cols), labels=numeric_cols)
+axis(2, at=1:length(numeric_cols), labels=rev(numeric_cols))
+title("Ma trận tương quan (Heatmap)")
+
+# Hiển thị giá trị tương quan lên hình
+for(i in 1:length(numeric_cols)){
+  for(j in 1:length(numeric_cols)){
+    text(i, length(numeric_cols)-j+1, round(cor_matrix[j,i],2))
+  }
+}
