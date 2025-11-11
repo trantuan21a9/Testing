@@ -1,0 +1,60 @@
+coca_cola <- read.csv("C:/Users/AN/Pictures/Coca_Cola_historical_data.csv", header = TRUE, sep = ",")
+
+child_coca_cola <- coca_cola[, c("Date", "Open", "High", "Low", "Close", "Volume")]
+
+na_ratio <- colMeans(is.na(child_coca_cola))
+print(na_ratio)
+
+removing_outliers <- function(df, col) {
+  x <- df[[col]]
+  quartiles  <- quantile(x, probs = c(0.25, 0.75))  # Q1 và Q3
+  iqr <- IQR(x)  # Khoảng tứ phân vị
+  Lower <- quartiles[1]- 1.5*iqr
+  Upper <- quartiles[2] + 1.5*iqr
+  df[x >= Lower & x <= Upper, , drop = FALSE]  # Lọc dữ liệu trong khoảng cho phép
+}
+
+child_coca_cola <- removing_outliers(child_coca_cola, "Open")
+child_coca_cola <- removing_outliers(child_coca_cola, "High")
+child_coca_cola <- removing_outliers(child_coca_cola, "Low")
+child_coca_cola <- removing_outliers(child_coca_cola, "Close")
+child_coca_cola <- removing_outliers(child_coca_cola, "Volume")
+
+child_coca_cola$Date <- as.Date(substr(child_coca_cola$Date, 1, 10))
+
+write.csv(child_coca_cola, "preprocessed_coca_cola.csv", row.names = FALSE)
+View(child_coca_cola)
+
+get_mode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+numeric_cols <- c("Open", "High", "Low", "Close", "Volume")
+
+summary_stats <- data.frame(
+  Variable = numeric_cols,
+  Mean = sapply(child_coca_cola[numeric_cols], mean),
+  Variance = sapply(child_coca_cola[numeric_cols], var),
+  SD = sapply(child_coca_cola[numeric_cols], sd),
+  Min = sapply(child_coca_cola[numeric_cols], min),
+  Max = sapply(child_coca_cola[numeric_cols], max),
+  Median = sapply(child_coca_cola[numeric_cols], median),
+  Mode = sapply(child_coca_cola[numeric_cols], get_mode),
+  Q1 = sapply(child_coca_cola[numeric_cols], function(x) quantile(x, 0.25)),
+  Q2 = sapply(child_coca_cola[numeric_cols], function(x) quantile(x, 0.5)),
+  Q3 = sapply(child_coca_cola[numeric_cols], function(x) quantile(x, 0.75))
+)
+
+print(summary_stats)
+
+child_coca_cola$Volume_Category <- cut(child_coca_cola$Volume, breaks=3, labels=c("Thấp","Trung bình","Cao"))
+
+freq_table <- table(child_coca_cola$Volume_Category)
+print(freq_table)
+
+barplot(freq_table, main="Biểu đồ cột Volume Category", col="skyblue",
+        ylab="Số lượng", xlab="Nhóm Volume")
+
+par(mfrow=c(2,3))  # Vẽ nhiều biểu đồ cùng lúc
+for(col in numeric_cols){
