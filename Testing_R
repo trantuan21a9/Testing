@@ -77,15 +77,15 @@ if (ncol(numeric_df) >= 4) {
   melted_corr_matrix <- melt(corr_matrix)
   
   plt <- ggplot(data = melted_corr_matrix, aes(x = Var1, y = Var2, fill = value)) +
-    geom_tile() + # This creates the heatmap squares
+    geom_tile() + 
     
     geom_text(aes(label = sprintf("%.2f", value)), color = "white", size = 4) +
     
     scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                         midpoint = 0, limit = c(-1, 1), name = "Correlation") +
+                         midpoint = 0, limit = c(-1, 1), name = "Độ tương quan") +
     
     theme_minimal() + 
-    labs(title = "Correlation Heatmap of Numeric Features") +
+    labs(title = "Ma trận tương quan (Heatmap)") +
     
     theme(axis.title.x = element_blank(),
           axis.title.y = element_blank(),
@@ -94,5 +94,5 @@ if (ncol(numeric_df) >= 4) {
   print(plt)
   
 } else {
-  print("Not enough numeric columns for a meaningful correlation heatmap.")
+  print("Không đủ cột số để tạo heatmap tương quan có ý nghĩa.")
 }
