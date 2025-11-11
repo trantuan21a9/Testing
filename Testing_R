@@ -73,7 +73,6 @@ axis(1, at=1:length(numeric_cols), labels=numeric_cols)
 axis(2, at=1:length(numeric_cols), labels=rev(numeric_cols))
 title("Ma trận tương quan (Heatmap)")
 
-# Hiển thị giá trị tương quan lên hình
 for(i in 1:length(numeric_cols)){
   for(j in 1:length(numeric_cols)){
     text(i, length(numeric_cols)-j+1, round(cor_matrix[j,i],2))
