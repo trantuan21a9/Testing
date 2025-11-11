@@ -64,17 +64,35 @@ hist(child_coca_cola[[col]], main=paste("Histogram của", col), xlab=col, col="
 }
 par(mfrow=c(1,1))  
 
-cor_matrix <- cor(child_coca_cola[numeric_cols])
-print(cor_matrix)
+library(ggplot2)
+library(reshape2)
 
-image(1:length(numeric_cols), 1:length(numeric_cols), t(cor_matrix[nrow(cor_matrix):1,]), 
-      axes=FALSE, xlab="", ylab="", col=heat.colors(20))
-axis(1, at=1:length(numeric_cols), labels=numeric_cols)
-axis(2, at=1:length(numeric_cols), labels=rev(numeric_cols))
-title("Ma trận tương quan (Heatmap)")
+eda_df <- child_coca_cola 
 
-for(i in 1:length(numeric_cols)){
-  for(j in 1:length(numeric_cols)){
-    text(i, length(numeric_cols)-j+1, round(cor_matrix[j,i],2))
-  }
+numeric_df <- eda_df[, sapply(eda_df, is.numeric)]
+
+if (ncol(numeric_df) >= 4) {
+  
+  corr_matrix <- cor(numeric_df, use = "complete.obs")
+  melted_corr_matrix <- melt(corr_matrix)
+  
+  plt <- ggplot(data = melted_corr_matrix, aes(x = Var1, y = Var2, fill = value)) +
+    geom_tile() + # This creates the heatmap squares
+    
+    geom_text(aes(label = sprintf("%.2f", value)), color = "white", size = 4) +
+    
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1, 1), name = "Correlation") +
+    
+    theme_minimal() + 
+    labs(title = "Correlation Heatmap of Numeric Features") +
+    
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+  
+  print(plt)
+  
+} else {
+  print("Not enough numeric columns for a meaningful correlation heatmap.")
 }
