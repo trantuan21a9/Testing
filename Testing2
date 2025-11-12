@@ -51,7 +51,6 @@ num_outliers <- sum(data_clean$outlier_flag, na.rm = TRUE)
 total_obs <- nrow(data_clean)
 pct_outliers <- num_outliers / total_obs * 100
 cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
-data_clean$outlier_flag <- NULL
 
 # Giữ nguyên ngoại lai để phản ánh biến động thị trường
 
