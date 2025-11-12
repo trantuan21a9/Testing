@@ -1,0 +1,163 @@
+# 1. Thư viện cần thiết
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(aTSA)
+library(randomForest)
+
+
+# 2. Đọc và tiền xử lý dữ liệu
+Coca_data <- read.csv("C:/Users/ADMIN/Downloads/archive/Coca_Cola_historical_data.csv")
+head(Coca_data, 10)
+
+# Chuyển Date sang dạng Date
+Coca_data$Date <- ymd_hms(Coca_data$Date) %>% as.Date()
+
+# Chọn các cột cần thiết và sắp xếp theo ngày
+data_clean <- Coca_data %>%
+  select(Date, Open, High, Low, Close, Volume) %>%
+  arrange(Date)
+
+# 3. Kiểm tra ngoại lai cho Close
+Q1 <- quantile(data_clean$Close, 0.25, na.rm = TRUE)
+Q3 <- quantile(data_clean$Close, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+lower <- Q1 - 1.5 * IQR
+upper <- Q3 + 1.5 * IQR
+
+data_clean2 <- data_clean
+data_clean2$outlier_flag <- ifelse(data_clean2$Close < lower | data_clean2$Close > upper, 1, 0)
+num_outliers <- sum(data_clean2$outlier_flag, na.rm = TRUE)
+total_obs <- nrow(data_clean2)
+pct_outliers <- num_outliers / total_obs * 100
+cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
+na_ratio <- colMeans(is.na(data_clean2))
+print(na_ratio)
+
+# Giữ nguyên ngoại lai để phản ánh biến động thị trường
+View(data_clean)
+
+# 4. Thống kê mô tả
+# Thống kê cơ bản
+summary(data_clean2)
+
+# Vẽ histogram cho các biến quan trọng
+ggplot(data_clean2, aes(x=Close)) +
+  geom_histogram(bins=30, fill="steelblue", alpha=0.7) +
+  theme_minimal() +
+  labs(title="Phân bố giá Close", x="Close", y="Số lượng")
+
+ggplot(data_clean2, aes(x=Volume)) +
+  geom_histogram(bins=30, fill="orange", alpha=0.7) +
+  theme_minimal() +
+  labs(title="Phân bố Volume", x="Volume", y="Số lượng")
+
+# Boxplot để kiểm tra ngoại lai
+boxplot(data_clean2$Close, main="Boxplot giá Close")
+boxplot(data_clean2$Volume, main="Boxplot Volume")
+
+# 5. Thêm biến thời gian
+data_clean2 <- data_clean2 %>%
+  mutate(
+    day_of_week = wday(Date),   # 1=CN, 7=Thứ 7
+    month = month(Date),
+    year = year(Date)
+  )
+
+# 6. Hồi quy tuyến tính đơn giản
+lm_model <- lm(Close ~ Volume, data = data_clean)
+summary(lm_model)
+
+ggplot(data_clean2, aes(x = Volume, y = Close)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  theme_minimal() +
+  labs(title = "Mối quan hệ giữa Volume và giá Close",
+       x = "Khối lượng giao dịch (Volume)", y = "Giá đóng cửa (Close)")
+
+#Kiểm tra các điều kiện phân phối chuẩn.
+par(mfrow = c(2,2))
+plot(lm_model)
+
+library(lmtest)
+dwtest(lm_model)
+
+
+# 7. Dự báo 30 ngày với ARIMA
+library(forecast)
+library(tseries)
+ko_ts <- ts(data_clean2$Close, frequency = 1)
+
+adf_result <- adf.test(ko_ts)
+print(adf_result)
+
+fit_arima <- auto.arima(ko_ts,
+                        seasonal = FALSE,
+                        stepwise = TRUE,
+                        approximation = TRUE,
+                        max.p = 5, max.q = 5)
+summary(fit_arima)
+
+forecast_ko <- forecast::forecast(fit_arima, h = 30)
+autoplot(forecast_ko) +
+  ggtitle("Dự báo 30 ngày giá Close bằng ARIMA") +
+  xlab("Ngày") + ylab("Close")
+
+# Kiểm tra độc lập phần dư
+res <- residuals(fit_arima)
+Box.test(res, lag = 20, type = "Ljung-Box")
+
+par(mfrow=c(1,1))
+# Biểu đồ ACF và PACF phần dư
+acf(res, main = "ACF phần dư")
+pacf(res, main = "PACF phần dư")
+
+#Kiểm tra phân phối chuẩn phần dư
+hist(res, breaks = 20, main = "Histogram phần dư", xlab = "Residuals")
+library(nortest)
+ad.test(res) 
+
+# 8. Random Forest: Dự báo giá Close
+# Tạo lag features
+lag_days <- c(1,2,3,5,7)
+for(l in lag_days){
+  data_clean2[[paste0("Close_lag", l)]] <- dplyr::lag(data_clean$Close, l)
+}
+
+data_clean2 <- na.omit(data_clean2)
+
+# Chia train/test
+train_data <- data_clean2 %>% filter(year < 2025)
+test_data  <- data_clean2 %>% filter(year == 2025)
+
+# Xây dựng Random Forest
+set.seed(123)
+rf_model <- randomForest(
+  Close ~ Open + High + Low + Volume + day_of_week + month +
+    Close_lag1 + Close_lag2 + Close_lag3 + Close_lag5 + Close_lag7,
+  data = train_data,
+  ntree = 500,
+  mtry = 4,
+  importance = TRUE
+)
+print(rf_model)
+
+# Dự báo trên test set
+pred_rf <- predict(rf_model, newdata = test_data)
+
+# Đánh giá hiệu quả
+rmse <- sqrt(mean((pred_rf - test_data$Close)^2))
+mae  <- mean(abs(pred_rf - test_data$Close))
+cat("RMSE Random Forest (2025):", round(rmse,4), "\nMAE:", round(mae,4), "\n")
+
+# Trực quan hóa dự báo vs thực tế
+ggplot() +
+  geom_line(aes(x = test_data$Date, y = test_data$Close), color = "blue") +
+  geom_line(aes(x = test_data$Date, y = pred_rf), color = "red") +
+  labs(title = "Random Forest dự báo giá Close năm 2025",
+       x = "Date", y = "Close Price") +
+  theme_minimal()
+
+# Biến quan trọng
+varImpPlot(rf_model)
