@@ -26,12 +26,13 @@ IQR <- Q3 - Q1
 lower <- Q1 - 1.5 * IQR
 upper <- Q3 + 1.5 * IQR
 
-data_clean$outlier_flag <- ifelse(data_clean$Close < lower | data_clean$Close > upper, 1, 0)
-num_outliers <- sum(data_clean$outlier_flag, na.rm = TRUE)
-total_obs <- nrow(data_clean)
+data_clean2 <- data_clean
+data_clean2$outlier_flag <- ifelse(data_clean2$Close < lower | data_clean2$Close > upper, 1, 0)
+num_outliers <- sum(data_clean2$outlier_flag, na.rm = TRUE)
+total_obs <- nrow(data_clean2)
 pct_outliers <- num_outliers / total_obs * 100
 cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
-na_ratio <- colMeans(is.na(data_clean))
+na_ratio <- colMeans(is.na(data_clean2))
 print(na_ratio)
 
 # Giữ nguyên ngoại lai để phản ánh biến động thị trường
@@ -39,25 +40,25 @@ View(data_clean)
 
 # 4. Thống kê mô tả
 # Thống kê cơ bản
-summary(data_clean)
+summary(data_clean2)
 
 # Vẽ histogram cho các biến quan trọng
-ggplot(data_clean, aes(x=Close)) +
+ggplot(data_clean2, aes(x=Close)) +
   geom_histogram(bins=30, fill="steelblue", alpha=0.7) +
   theme_minimal() +
   labs(title="Phân bố giá Close", x="Close", y="Số lượng")
 
-ggplot(data_clean, aes(x=Volume)) +
+ggplot(data_clean2, aes(x=Volume)) +
   geom_histogram(bins=30, fill="orange", alpha=0.7) +
   theme_minimal() +
   labs(title="Phân bố Volume", x="Volume", y="Số lượng")
 
 # Boxplot để kiểm tra ngoại lai
-boxplot(data_clean$Close, main="Boxplot giá Close")
-boxplot(data_clean$Volume, main="Boxplot Volume")
+boxplot(data_clean2$Close, main="Boxplot giá Close")
+boxplot(data_clean2$Volume, main="Boxplot Volume")
 
 # 5. Thêm biến thời gian
-data_clean <- data_clean %>%
+data_clean2 <- data_clean2 %>%
   mutate(
     day_of_week = wday(Date),   # 1=CN, 7=Thứ 7
     month = month(Date),
@@ -65,10 +66,10 @@ data_clean <- data_clean %>%
   )
 
 # 6. Hồi quy tuyến tính đơn giản
-lm_model <- lm(Close ~ Volume, data = data_clean)
+lm_model <- lm(Close ~ Volume, data = data_clean2)
 summary(lm_model)
 
-ggplot(data_clean, aes(x = Volume, y = Close)) +
+ggplot(data_clean2, aes(x = Volume, y = Close)) +
   geom_point(alpha = 0.5, color = "steelblue") +
   geom_smooth(method = "lm", se = TRUE, color = "red") +
   theme_minimal() +
@@ -86,7 +87,7 @@ dwtest(lm_model)
 # 7. Dự báo 30 ngày với ARIMA
 library(forecast)
 library(tseries)
-ko_ts <- ts(data_clean$Close, frequency = 1)
+ko_ts <- ts(data_clean2$Close, frequency = 1)
 
 adf_result <- adf.test(ko_ts)
 print(adf_result)
@@ -121,14 +122,14 @@ ad.test(res)
 # Tạo lag features
 lag_days <- c(1,2,3,5,7)
 for(l in lag_days){
-  data_clean[[paste0("Close_lag", l)]] <- dplyr::lag(data_clean$Close, l)
+  data_clean2[[paste0("Close_lag", l)]] <- dplyr::lag(data_clean2$Close, l)
 }
 
-data_clean <- na.omit(data_clean)
+data_clean2 <- na.omit(data_clean2)
 
 # Chia train/test
-train_data <- data_clean %>% filter(year < 2025)
-test_data  <- data_clean %>% filter(year == 2025)
+train_data <- data_clean2 %>% filter(year < 2025)
+test_data  <- data_clean2 %>% filter(year == 2025)
 
 # Xây dựng Random Forest
 set.seed(123)
