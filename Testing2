@@ -19,8 +19,23 @@ data_clean <- Coca_data %>%
   select(Date, Open, High, Low, Close, Volume) %>%
   arrange(Date)
 
+# 3. Kiểm tra ngoại lai cho Close
+Q1 <- quantile(data_clean$Close, 0.25, na.rm = TRUE)
+Q3 <- quantile(data_clean$Close, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+lower <- Q1 - 1.5 * IQR
+upper <- Q3 + 1.5 * IQR
+
+data_clean$outlier_flag <- ifelse(data_clean$Close < lower | data_clean$Close > upper, 1, 0)
+num_outliers <- sum(data_clean$outlier_flag, na.rm = TRUE)
+total_obs <- nrow(data_clean)
+pct_outliers <- num_outliers / total_obs * 100
+cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
+
+# Giữ nguyên ngoại lai để phản ánh biến động thị trường
 View(data_clean)
-# 3. Thống kê mô tả
+
+# 4. Thống kê mô tả
 # Thống kê cơ bản
 summary(data_clean)
 
@@ -38,21 +53,6 @@ ggplot(data_clean, aes(x=Volume)) +
 # Boxplot để kiểm tra ngoại lai
 boxplot(data_clean$Close, main="Boxplot giá Close")
 boxplot(data_clean$Volume, main="Boxplot Volume")
-
-# 4. Kiểm tra ngoại lai cho Close
-Q1 <- quantile(data_clean$Close, 0.25, na.rm = TRUE)
-Q3 <- quantile(data_clean$Close, 0.75, na.rm = TRUE)
-IQR <- Q3 - Q1
-lower <- Q1 - 1.5 * IQR
-upper <- Q3 + 1.5 * IQR
-
-data_clean$outlier_flag <- ifelse(data_clean$Close < lower | data_clean$Close > upper, 1, 0)
-num_outliers <- sum(data_clean$outlier_flag, na.rm = TRUE)
-total_obs <- nrow(data_clean)
-pct_outliers <- num_outliers / total_obs * 100
-cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
-
-# Giữ nguyên ngoại lai để phản ánh biến động thị trường
 
 # 5. Thêm biến thời gian
 data_clean <- data_clean %>%
