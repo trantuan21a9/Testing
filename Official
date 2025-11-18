@@ -11,7 +11,7 @@ library(randomForest)
 library(nortest)
 
 # 2. Đọc và tiền xử lý dữ liệu
-Coca_data <- read.csv("C:/Users/Hp/Downloads/Coca_Cola_historical_data.csv")
+Coca_data <- read.csv("C:/Users/ADMIN/Downloads/archive/Coca_Cola_historical_data.csv")
 head(Coca_data, 10)
 
 # Chuyển Date sang dạng Date
