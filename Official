@@ -22,10 +22,6 @@ data_clean <- Coca_data %>%
   select(Date, Open, High, Low, Close, Volume) %>%
   arrange(Date)
 
-# Kiểm tra dữ liệu khuyết
-na_ratio <- colMeans(is.na(data_clean))
-print(na_ratio)
-
 # 3. Kiểm tra ngoại lai cho Close
 Q1 <- quantile(data_clean$Close, 0.25, na.rm = TRUE)
 Q3 <- quantile(data_clean$Close, 0.75, na.rm = TRUE)
@@ -39,13 +35,18 @@ num_outliers <- sum(data_clean2$outlier_flag, na.rm = TRUE)
 total_obs <- nrow(data_clean2)
 pct_outliers <- num_outliers / total_obs * 100
 cat("Số ngoại lai:", num_outliers, " / Tổng:", total_obs, "=>", round(pct_outliers,2), "%\n")
+na_ratio <- colMeans(is.na(data_clean2))
+print(na_ratio)
+
+# Giữ nguyên ngoại lai để phản ánh biến động thị trường
+View(data_clean)
 
 # 4. Thống kê mô tả
 # Thống kê cơ bản
-summary(data_clean)
+summary(data_clean2)
 
 # Vẽ histogram cho các biến quan trọng
-ggplot(data_clean, aes(x=Close)) +
+ggplot(data_clean2, aes(x=Close)) +
   geom_histogram(bins=30, fill="steelblue", alpha=0.7) +
   theme_minimal() +
   labs(title="Phân bố giá Close", x="Close", y="Số lượng")
@@ -53,7 +54,7 @@ ggplot(data_clean, aes(x=Close)) +
 ggplot(data_clean2, aes(x=Volume)) +
   geom_histogram(bins=30, fill="orange", alpha=0.7) +
   theme_minimal() +
-  labs(title="Phân bố Volume", x="Volume", y="Số lượng") +
+  labs(title="Phân bố Volume", x="Volume", y="Số lượng")
 
 # Boxplot để kiểm tra ngoại lai
 boxplot(data_clean2$Close, main="Boxplot giá Close")
@@ -62,16 +63,16 @@ boxplot(data_clean2$Volume, main="Boxplot Volume")
 # Lập ma trận tương quan
 eda_df <- data_clean
 numeric_df <- eda_df[, sapply(eda_df, is.numeric)]
-  corr_matrix <- cor(numeric_df, use = "complete.obs")
-  melted_corr_matrix <- melt(corr_matrix)
-  plt <- ggplot(data = melted_corr_matrix, aes(x = Var1, y = Var2, fill = value)) +
-    geom_tile() +
-    geom_text(aes(label = sprintf("%.2f", value)), color = "white", size = 4) +
-    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                         midpoint = 0, limit = c(-1, 1), name = "Correlation") +
-    theme_minimal() + 
-    labs(title = "Ma trận tương quan của các cột dữ liệu") +
-  print(plt)
+corr_matrix <- cor(numeric_df, use = "complete.obs")
+melted_corr_matrix <- melt(corr_matrix)
+plt <- ggplot(data = melted_corr_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), color = "white", size = 4) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), name = "Correlation") +
+  theme_minimal() + 
+  labs(title = "Ma trận tương quan của các cột dữ liệu")
+print(plt)
 
 # 5. Thêm biến thời gian
 data_clean2 <- data_clean2 %>%
